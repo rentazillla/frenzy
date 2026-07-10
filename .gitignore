@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+.ruff_cache/
+.pytest_cache/
+data/*.faiss
+data/*.faiss.ids
+data/*.smi
+data/*.sdf
+data/*.sdf.gz
+data/*.smi.gz
+*.egg-info/
+build/
+dist/
+.coverage
+htmlcov/
