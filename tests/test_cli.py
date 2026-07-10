@@ -48,6 +48,52 @@ def test_similar_stoned_basic():
     assert "tanimoto" in result.stdout
 
 
+def test_similar_stoned_excludes_ions_by_default():
+    result = runner.invoke(
+        app,
+        [
+            "similar",
+            "--input", "CC(=O)Oc1ccccc1C(=O)O",
+            "--n", "20",
+            "--strategy", "stoned",
+            "--min-sim", "0.1",
+            "--max-sim", "0.99",
+            "--seed", "42",
+            "--format", "csv",
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    from rdkit import Chem
+
+    lines = result.stdout.strip().splitlines()[1:]
+    assert len(lines) > 0
+    for line in lines:
+        smi = line.split(",")[1]
+        mol = Chem.MolFromSmiles(smi)
+        assert mol is not None
+        assert all(a.GetFormalCharge() == 0 for a in mol.GetAtoms())
+
+
+def test_similar_stoned_allow_ions():
+    result = runner.invoke(
+        app,
+        [
+            "similar",
+            "--input", "CC(=O)Oc1ccccc1C(=O)O",
+            "--n", "20",
+            "--strategy", "stoned",
+            "--min-sim", "0.1",
+            "--max-sim", "0.99",
+            "--seed", "42",
+            "--format", "csv",
+            "--allow-ions",
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    lines = result.stdout.strip().splitlines()[1:]
+    assert len(lines) > 0
+
+
 def test_similar_stoned_smi_format(tmp_path):
     out = tmp_path / "out.smi"
     result = runner.invoke(

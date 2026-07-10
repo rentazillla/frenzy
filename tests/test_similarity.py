@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from frenzy.similarity import band_filter, dedupe, has_metals
+from frenzy.similarity import band_filter, dedupe, has_charges, has_metals
 
 
 def test_band_filter_returns_sorted():
@@ -36,3 +36,21 @@ def test_has_metals_false_for_organic():
 def test_has_metals_true():
     assert has_metals("[Na+].[Cl-]")
     assert has_metals("c1ccccc1[Zn]")
+
+
+def test_has_charges_false_for_neutral():
+    assert not has_charges("CCO")
+    assert not has_charges("c1ccccc1")
+
+
+def test_has_charges_true():
+    assert has_charges("[O-]c1ccccc1")
+    assert has_charges("C[N+](C)(C)C")
+
+
+def test_has_charges_true_for_zwitterion():
+    assert has_charges("[NH3+]CC(=O)[O-]")
+
+
+def test_has_charges_false_for_invalid():
+    assert not has_charges("not-a-smiles")

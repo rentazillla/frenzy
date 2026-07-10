@@ -12,7 +12,7 @@ from .corpus.index import build_index
 from .generators import corpus as corpus_gen
 from .generators import stoned as stoned_gen
 from .output import write_output
-from .similarity import band_filter, has_metals
+from .similarity import band_filter, has_charges, has_metals
 
 app = typer.Typer(
     name="frenzy",
@@ -86,6 +86,7 @@ def similar(
     gate_threshold: float = typer.Option(0.35, "--gate-threshold", help="min corpus Tanimoto to keep a candidate (hybrid)"),
     keep_stereo: bool = typer.Option(False, "--keep-stereo", help="preserve stereochemistry during mutation"),
     allow_metals: bool = typer.Option(False, "--allow-metals", help="allow metal-containing candidates"),
+    allow_ions: bool = typer.Option(False, "--allow-ions", help="allow charged/ionic candidates"),
     strict: bool = typer.Option(False, "--strict", help="exit nonzero if any input is invalid"),
 ) -> None:
     """Generate similar compounds in the same chemical space."""
@@ -130,6 +131,9 @@ def similar(
 
         if not allow_metals:
             raw = [smi for smi in raw if not has_metals(smi)]
+
+        if not allow_ions:
+            raw = [smi for smi in raw if not has_charges(smi)]
 
         if strategy == "hybrid":
             raw = corpus_gen.gate_candidates(

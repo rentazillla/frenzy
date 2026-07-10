@@ -60,6 +60,7 @@ frenzy similar  --input "CCO"|--multi in.smi --n 50 \
 | `--gate-threshold` | `0.35` | Min Tanimoto to nearest corpus member to keep a candidate (hybrid) |
 | `--keep-stereo` | off | Preserve input stereochemistry during mutation |
 | `--allow-metals` | off | Allow metal-containing candidates |
+| `--allow-ions` | off | Allow charged/ionic candidates |
 | `--strict` | off | Exit nonzero if any input SMILES is invalid |
 
 ## How it works

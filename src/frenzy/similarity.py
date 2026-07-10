@@ -18,6 +18,13 @@ def has_metals(smiles: str) -> bool:
     return any(atom.GetAtomicNum() in metals for atom in mol.GetAtoms())
 
 
+def has_charges(smiles: str) -> bool:
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return False
+    return any(atom.GetFormalCharge() != 0 for atom in mol.GetAtoms())
+
+
 def band_filter(
     candidates: list[str],
     ref_smiles: str,
