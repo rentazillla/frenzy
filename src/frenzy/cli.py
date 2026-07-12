@@ -60,12 +60,8 @@ def index(
     if fp != "morgan":
         console.print(f"[red]unsupported fingerprint: {fp} (only 'morgan')[/red]")
         raise typer.Exit(1)
-    smiles_list = mol_io.read_smi_file(corpus)
-    if not smiles_list:
-        console.print("[red]no molecules found in corpus[/red]")
-        raise typer.Exit(1)
-    console.print(f"[blue]Indexing {len(smiles_list)} molecules...[/blue]")
-    build_index(smiles_list, out)
+    smiles = mol_io.iter_smi_file(corpus)
+    build_index(smiles, out)
     console.print(f"[green]Index written:[/green] {out}")
 
 

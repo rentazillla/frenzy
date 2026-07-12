@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import gc
+
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem import DataStructs
@@ -40,10 +42,12 @@ def tanimoto(a_smiles: str, b_smiles: str, radius: int = 2, n_bits: int = 2048) 
     return DataStructs.TanimotoSimilarity(fp_a, fp_b)
 
 
-def batch_morgan_bits(
-    smiles_list: list[str], radius: int = 2, n_bits: int = 2048
-) -> np.ndarray:
-    """Stacked [N, n_bits] uint8 array. Invalid SMILES produce an all-zero row."""
+def batch_morgan_bits(smiles_list: list[str], radius: int = 2, n_bits: int = 2048) -> np.ndarray:
+    """Stacked [N, n_bits] uint8 array. Invalid SMILES produce an all-zero row.
+
+    Mol/fp objects are released each iteration and the cyclic GC is triggered
+    periodically so large corpora don't accumulate unreachable RDKit objects.
+    """
     gen = _gen(radius, n_bits)
     arr = np.zeros((len(smiles_list), n_bits), dtype=np.uint8)
     for i, smi in enumerate(smiles_list):
@@ -52,4 +56,7 @@ def batch_morgan_bits(
             continue
         fp = gen.GetFingerprint(mol)
         DataStructs.ConvertToNumpyArray(fp, arr[i])
+        del mol, fp
+        if i % 8192 == 8191:
+            gc.collect()
     return arr

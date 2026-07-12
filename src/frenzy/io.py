@@ -50,10 +50,14 @@ def parse_inputs(identifiers: list[str]) -> tuple[list[MolEntry], list[str]]:
 
 def read_smi_file(path: Path) -> list[str]:
     """Read a .smi file: one identifier per line, whitespace-delimited first column."""
-    identifiers: list[str] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        identifiers.append(line.split()[0])
-    return identifiers
+    return list(iter_smi_file(path))
+
+
+def iter_smi_file(path: Path):
+    """Yield identifiers from a .smi file one at a time without loading it all into memory."""
+    with path.open(encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            yield line.split()[0]
