@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gc
 from collections.abc import Iterable, Iterator
+from itertools import islice
 from pathlib import Path
 
 import faiss
@@ -12,32 +13,78 @@ from rdkit.Chem import DataStructs
 from ..fingerprints import _gen, batch_morgan_bits
 
 _BATCH = 65536
+_IVF_MIN_CORPUS = 1000
+DEFAULT_NPROBE = 64
 
 
 def build_index(
-    smiles: Iterable[str] | list[str],
+    smiles: Iterable[str],
     out_path: Path,
+    corpus_size: int | None = None,
     radius: int = 2,
     n_bits: int = 2048,
 ) -> None:
     """Build a faiss binary index over Morgan fingerprints of *smiles*.
 
-    Streams the corpus in batches so peak memory is bounded by the batch size,
-    not the corpus size. Persists the index to *out_path* and a sibling
-    ``.ids`` file mapping faiss row -> SMILES.
+    Uses IndexBinaryIVF for corpora >= 1000 entries (fast approximate search)
+    and IndexBinaryFlat for smaller corpora (exact search, no training needed).
+
+    Streams the corpus in a single pass so peak memory is bounded by the batch
+    size, not the corpus size. For large corpora the caller must pass
+    *corpus_size* (e.g. from a line count); if None the iterable is buffered
+    to count, which is fine for small corpora but defeats streaming on large ones.
+
+    Persists the index to *out_path*, a sibling ``.ids`` file (faiss row ->
+    SMILES), and a ``.nprobe`` file for IVF indexes (faiss does not persist
+    nprobe).
     """
     gen = _gen(radius, n_bits)
-    index = faiss.IndexBinaryFlat(n_bits)
     ids_path = out_path.with_suffix(out_path.suffix + ".ids")
+    nprobe_path = out_path.with_suffix(out_path.suffix + ".nprobe")
+
+    if corpus_size is None:
+        smiles = list(smiles)
+        n = len(smiles)
+    else:
+        n = corpus_size
+
+    if n < _IVF_MIN_CORPUS:
+        index = faiss.IndexBinaryFlat(n_bits)
+        with ids_path.open("w", encoding="utf-8") as ids_f:
+            for batch in _batched(smiles, _BATCH):
+                _append_batch(index, batch, gen, n_bits, ids_f)
+        faiss.write_index_binary(index, str(out_path))
+        return
+
+    nlist = min(int(np.sqrt(n)), 4096)
+    nprobe = min(nlist // 4, DEFAULT_NPROBE)
+    quantizer = faiss.IndexBinaryFlat(n_bits)
+    index = faiss.IndexBinaryIVF(quantizer, n_bits, faiss.METRIC_L2)
+    index.nprobe = nprobe
+
+    train_size = min(max(nlist * 40, _BATCH), n)
+    train_batch = list(islice(smiles, train_size))
+    train_packed = _fingerprint_batch(train_batch, gen, n_bits)
+    index.train(train_packed)
+    del train_packed
+    gc.collect()
+
     with ids_path.open("w", encoding="utf-8") as ids_f:
+        ids_f.write("\n".join(train_batch))
+        ids_f.write("\n")
         for batch in _batched(smiles, _BATCH):
-            packed = _fingerprint_batch(batch, gen, n_bits)
-            index.add(packed)
-            ids_f.write("\n".join(batch))
-            ids_f.write("\n")
-            del packed
-            gc.collect()
+            _append_batch(index, batch, gen, n_bits, ids_f)
     faiss.write_index_binary(index, str(out_path))
+    nprobe_path.write_text(str(nprobe), encoding="utf-8")
+
+
+def _append_batch(index, batch, gen, n_bits, ids_f) -> None:
+    packed = _fingerprint_batch(batch, gen, n_bits)
+    index.add(packed)
+    ids_f.write("\n".join(batch))
+    ids_f.write("\n")
+    del packed
+    gc.collect()
 
 
 def _fingerprint_batch(
@@ -66,16 +113,26 @@ def _batched(smiles: Iterable[str], size: int) -> Iterator[list[str]]:
         yield batch
 
 
-def load_index(index_path: Path) -> tuple[faiss.IndexBinaryFlat, list[str]]:
-    """Load a faiss index and its companion ``.ids`` file."""
+def load_index(index_path: Path) -> tuple[faiss.IndexBinary, list[str]]:
+    """Load a faiss index and its companion ``.ids`` file.
+
+    For IVF indexes, restores ``nprobe`` from the sibling ``.nprobe`` file
+    (faiss does not persist this attribute).
+    """
     index = faiss.read_index_binary(str(index_path))
+    if hasattr(index, "nprobe"):
+        nprobe_path = index_path.with_suffix(index_path.suffix + ".nprobe")
+        if nprobe_path.exists():
+            index.nprobe = int(nprobe_path.read_text(encoding="utf-8").strip())
+        else:
+            index.nprobe = DEFAULT_NPROBE
     ids_path = index_path.with_suffix(index_path.suffix + ".ids")
     smiles_list = ids_path.read_text(encoding="utf-8").splitlines()
     return index, smiles_list
 
 
 def query_knn(
-    index: faiss.IndexBinaryFlat,
+    index: faiss.IndexBinary,
     queries: list[str],
     k: int = 1,
     radius: int = 2,
@@ -89,7 +146,7 @@ def query_knn(
 
 
 def corpus_neighbors(
-    index: faiss.IndexBinaryFlat,
+    index: faiss.IndexBinary,
     smiles_list: list[str],
     queries: list[str],
     k: int = 5,

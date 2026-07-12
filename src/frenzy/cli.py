@@ -60,8 +60,10 @@ def index(
     if fp != "morgan":
         console.print(f"[red]unsupported fingerprint: {fp} (only 'morgan')[/red]")
         raise typer.Exit(1)
+    n = mol_io.count_smi_file(corpus)
+    console.print(f"[blue]Corpus entries:[/blue] {n}")
     smiles = mol_io.iter_smi_file(corpus)
-    build_index(smiles, out)
+    build_index(smiles, out, corpus_size=n)
     console.print(f"[green]Index written:[/green] {out}")
 
 
@@ -111,13 +113,22 @@ def similar(
         )
         raise typer.Exit(1)
 
+    # Load the corpus index once for all seeds (hybrid/corpus strategies).
+    loaded_index = None
+    loaded_smiles = None
+    if needs_corpus:
+        from .corpus.index import load_index
+        loaded_index, loaded_smiles = load_index(corpus_index)
+        console.print(f"[blue]Corpus index loaded:[/blue] {loaded_index.ntotal} entries")
+
     # (input_smiles, candidate_smiles, tanimoto)
     all_scored: list[tuple[str, str, float]] = []
 
     for entry in valid:
         if strategy == "corpus":
             retrieved = corpus_gen.corpus_retrieve(
-                corpus_index, entry.canon_smiles, n, min_sim=min_sim, max_sim=max_sim
+                corpus_index, entry.canon_smiles, n, min_sim=min_sim, max_sim=max_sim,
+                index=loaded_index, smiles_list=loaded_smiles,
             )
             all_scored.extend((entry.canon_smiles, smi, sim) for smi, sim in retrieved)
             continue
@@ -133,7 +144,8 @@ def similar(
 
         if strategy == "hybrid":
             raw = corpus_gen.gate_candidates(
-                raw, corpus_index, gate_threshold=gate_threshold
+                raw, corpus_index, gate_threshold=gate_threshold,
+                index=loaded_index,
             )
 
         scored = band_filter(raw, entry.canon_smiles, min_sim=min_sim, max_sim=max_sim)

@@ -12,12 +12,7 @@ from rich.progress import (
 )
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-CHEMBBL_SDF_URL = "https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/latest/chembl_35.sdf.gz"
-# Real ChEMBL URL is huge (~4 GB). For a usable subset we point at the ChEMBL
-# monomer SDF which is smaller; users can supply a local file for full coverage.
-CHEMBBL_SUBSET_URL = (
-    "https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/latest/chembl_35.sdf.gz"
-)
+CHEMBBL_SDF_URL = "https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/latest/chembl_37.sdf.gz"
 
 ZINC_BASE = "https://files.docking.org/ZINC20-2D/"
 
@@ -54,37 +49,41 @@ def _download_with_resume(url: str, out_path: Path) -> Path:
     return out_path
 
 
-def _smiles_from_sdf(sdf_path: Path) -> list[str]:
-    from rdkit import Chem
+def _stream_sdf_gz_to_smi(gz_path: Path, smi_path: Path) -> int:
+    """Stream a gzipped SDF into a .smi file, one molecule at a time.
 
-    supplier = Chem.SDMolSupplier(str(sdf_path))
-    return [Chem.MolToSmiles(m) for m in supplier if m is not None]
-
-
-def _smiles_from_sdf_gz(gz_path: Path) -> list[str]:
+    Uses ForwardSDMolSupplier over the gzip binary stream so neither the
+    decompressed SDF nor the full Mol list is ever held in memory.
+    Returns the number of SMILES written.
+    """
     import gzip
 
     from rdkit import Chem
 
-    with gzip.open(gz_path, "rt", encoding="utf-8") as f:
-        supplier = Chem.SDMolSupplier(f.read())
-    return [Chem.MolToSmiles(m) for m in supplier if m is not None]
+    written = 0
+    with gzip.open(gz_path, "rb") as gz, smi_path.open("w", encoding="utf-8") as out:
+        for mol in Chem.ForwardSDMolSupplier(gz):
+            if mol is None:
+                continue
+            out.write(Chem.MolToSmiles(mol))
+            out.write("\n")
+            written += 1
+    return written
 
 
 def download_chembl(out_dir: Path) -> Path:
     """Download the ChEMBL SDF and extract SMILES into a .smi file.
 
-    The full ChEMBL SDF is ~4 GB compressed. The SMILES are extracted and
-    written to ``<out>/chembl.smi``; the raw SDF is kept for re-indexing.
+    The full ChEMBL SDF is ~4 GB compressed. SMILES are streamed out one
+    molecule at a time so peak memory is bounded by a single Mol object.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     sdf_gz = out_dir / "chembl.sdf.gz"
     smi_path = out_dir / "chembl.smi"
     if smi_path.exists():
         return smi_path
-    _download_with_resume(CHEMBBL_SUBSET_URL, sdf_gz)
-    smiles = _smiles_from_sdf_gz(sdf_gz)
-    smi_path.write_text("\n".join(smiles), encoding="utf-8")
+    _download_with_resume(CHEMBBL_SDF_URL, sdf_gz)
+    _stream_sdf_gz_to_smi(sdf_gz, smi_path)
     return smi_path
 
 

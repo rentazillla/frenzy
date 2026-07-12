@@ -61,3 +61,9 @@ def iter_smi_file(path: Path):
             if not line or line.startswith("#"):
                 continue
             yield line.split()[0]
+
+
+def count_smi_file(path: Path) -> int:
+    """Count valid entries in a .smi file without loading it into memory."""
+    with path.open(encoding="utf-8") as f:
+        return sum(1 for line in f if line.strip() and not line.lstrip().startswith("#"))
