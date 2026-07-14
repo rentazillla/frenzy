@@ -4,16 +4,31 @@ Generate similar compounds in the same chemical space from SMILES input.
 
 frenzy is a command-line tool that, given a SMILES identifier (or a list of
 SMILES), produces a desired number of similar compounds using the STONED-SELFIES
-generative method gated by a known-compound corpus (ChEMBL / ZINC20 / a
-user-supplied `.smi` file). The hybrid strategy returns *novel* structures that
+generative method gated by a known-compound corpus (you can use ChEMBL, ZINC20, or a
+user-supplied `.smi` file). The hybrid strategy returns novel structures that
 remain plausibly in known chemical space.
 
 ## Install
+
+These are instructions for installing via uv. Best to just pull the repo first and thien install.
+Make sure your python >= 3.10.
+
 
 ```bash
 uv sync                        # creates .venv + installs deps
 uv run frenzy --help
 ```
+
+## Install (without uv)
+
+```bash
+git clone https://github.com/rentazillla/frenzy.git
+cd frenzy
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -e .
+frenzy --help
+Then run commands as frenzy ... (instead of uv run frenzy ...).
 
 ## Quick start
 
@@ -78,4 +93,7 @@ frenzy similar  --input "CCO"|--multi in.smi --n 50 \
 
 ## License
 
-MIT
+GNU GPLv3
+
+Let me know if you use this project and have any ideas for improving it.
+Change it as you wish as long as you keep it open source.
