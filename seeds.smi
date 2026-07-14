@@ -1,0 +1,21 @@
+# BZD-site ligand seeds for GABA-A PAM generation (Wafford et al. 2004, BST 32:553-556)
+CN1C(=O)CN=C(c2ccccc2)c2cc(Cl)ccc21	diazepam
+O=C1CN=C(c2ccccc2)c2cc(Cl)ccc2N1	nordazepam
+O=C1Nc2ccc(Cl)cc2C(c2ccccc2)=NC1O	oxazepam
+CN1C(=O)C(O)N=C(c2ccccc2)c2cc(Cl)ccc21	temazepam
+O=C1CN=C(c2ccccc2Cl)c2cc([N+](=O)[O-])ccc2N1	clonazepam
+O=C1CN=C(c2ccccc2)c2cc([N+](=O)[O-])ccc2N1	nitrazepam
+CN1C(=O)CN=C(c2ccccc2F)c2cc([N+](=O)[O-])ccc21	flunitrazepam
+O=C1CN=C(c2ccccn2)c2cc(Br)ccc2N1	bromazepam
+O=C1Nc2ccc(Cl)cc2C(c2ccccc2Cl)=NC1O	lorazepam
+CN=C1CN(O)C(c2ccccc2)=c2cc(Cl)ccc2=N1	chlordiazepoxide
+Cc1nnc2n1-c1ccc(Cl)cc1C(c1ccccc1)=NC2	alprazolam
+Cc1ncc2n1-c1ccc(Cl)cc1C(c1ccccc1F)=NC2	midazolam
+Cc1nnc2n1-c1ccc(Cl)cc1C(c1ccccc1Cl)=NC2	triazolam
+Clc1ccc2c(c1)C(c1ccccc1)=NCc1nncn1-2	estazolam
+CCOC(=O)c1ncn2c1CN(C)C(=O)c1cc(F)ccc1-2	flumazenil
+Cc1ccc(-c2nc3ccc(C)cn3c2CC(=O)N(C)C)cc1	zolpidem
+CCN(C(C)=O)c1cccc(-c2ccnc3c(C#N)cnn23)c1	zaleplon
+CN1CCN(C(=O)OC2c3nccnc3C(=O)N2c2ccc(Cl)cn2)CC1	eszopiclone
+CCN(CC)CCN1C(=O)CN=C(c2ccccc2F)c2cc(Cl)ccc21	flurazepam
+Fc1ccccc1C1=NCC(=S)N(CC(F)(F)F)c2ccc(Cl)cc21	quazepam

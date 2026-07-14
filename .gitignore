@@ -14,3 +14,11 @@ build/
 dist/
 .coverage
 htmlcov/
+opencode.json
+opencode.jsonc
+Modelfile
+.env
+*.env
+*_api_key*
+*secret*
+*.key
